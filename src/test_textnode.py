@@ -1,6 +1,7 @@
 import unittest
 
 from textnode import TextNode, TextType, text_node_to_html_node
+from other_func import split_nodes_delimiter
 
 class TestTextNode(unittest.TestCase):
     def test_eq_same_with_default_link(self):
@@ -52,6 +53,14 @@ class TestTextNode(unittest.TestCase):
         self.assertEqual(html_node.tag, "a")
         self.assertEqual(html_node.value, "This is a link node")
         self.assertEqual(html_node.props, {'href': 'https://www.boot.dev'})
+
+class TestOtherFunc(unittest.TestCase):
+    def test_split_nodes_delimiter(self):
+        node = TextNode("This is text with a `code block` word", TextType.TEXT)
+        new_nodes = split_nodes_delimiter([node], "`", TextType.CODE)
+        self.assertEqual(new_nodes, [TextNode("This is text with a ", TextType.TEXT),TextNode("code block", TextType.CODE), TextNode(" word", TextType.TEXT)])
+    
+        
 
 if __name__ == "__main__":
     unittest.main()
