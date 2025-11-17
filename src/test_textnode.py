@@ -59,8 +59,27 @@ class TestOtherFunc(unittest.TestCase):
         node = TextNode("This is text with a `code block` word", TextType.TEXT)
         new_nodes = split_nodes_delimiter([node], "`", TextType.CODE)
         self.assertEqual(new_nodes, [TextNode("This is text with a ", TextType.TEXT),TextNode("code block", TextType.CODE), TextNode(" word", TextType.TEXT)])
-    
-        
+
+    def test_split_nodes_delimiter_1(self):
+        node = TextNode("This is text with a **bold block** word", TextType.TEXT)
+        node2 = TextNode("This is another node with a **bold**", TextType.TEXT)
+        node3 = TextNode("This is a node with no delimiters", TextType.TEXT)
+        new_nodes = split_nodes_delimiter([node, node2, node3], "**", TextType.BOLD)
+        self.assertEqual(new_nodes, [TextNode("This is text with a ", TextType.TEXT),TextNode("bold block", TextType.BOLD), TextNode(" word", TextType.TEXT), TextNode("This is another node with a ", TextType.TEXT), TextNode("bold", TextType.BOLD), TextNode("This is a node with no delimiters", TextType.TEXT)])
+
+    def test_split_nodes_delimiter_2(self):
+        node = TextNode("This is bold text", TextType.BOLD)
+        node2 = TextNode("This is text text*", TextType.TEXT)
+        node3 = TextNode("This is code text", TextType.CODE)
+        new_nodes = split_nodes_delimiter([node, node2, node3], "**", TextType.BOLD)
+        self.assertEqual(new_nodes, [TextNode("This is bold text", TextType.BOLD), TextNode("This is text text*", TextType.TEXT), TextNode("This is code text", TextType.CODE)])
+
+    def test_split_nodes_delimiter_3(self):
+        node = TextNode("This is bold text", TextType.BOLD)
+        node2 = TextNode("This is _italic text_", TextType.TEXT)
+        node3 = TextNode("This is code text", TextType.CODE)
+        new_nodes = split_nodes_delimiter([node, node2, node3], "_", TextType.ITALIC)
+        self.assertEqual(new_nodes, [TextNode("This is bold text", TextType.BOLD), TextNode("This is ", TextType.TEXT), TextNode("italic text", TextType.ITALIC), TextNode("This is code text", TextType.CODE)])
 
 if __name__ == "__main__":
     unittest.main()
