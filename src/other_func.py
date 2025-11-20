@@ -8,9 +8,14 @@ def split_nodes_delimiter(old_nodes, delimiter, text_type):
         if old_node.text_type != TextType.TEXT:
             new_nodes.append(old_node)
             continue
-        sections = old_node.text.split(delimiter)
-        if len(sections) % 2 == 0:
-            raise ValueError("invalid markdown, formatted section not closed")
+        delimiter_count = old_node.text.count(delimiter)
+        if delimiter_count < 2:
+            new_nodes.append(old_node)
+            continue
+        if delimiter_count % 2 != 0:
+            delimiter_count -= 1
+        #we adjust the delimiter count if it is odd, to be one less than so we only split on pairs, and not any left over 3rd delimiter that was meant to be text
+        sections = old_node.text.split(delimiter, delimiter_count)
         for i in range(len(sections)):
             if sections[i] == "":
                 continue
@@ -30,8 +35,7 @@ def extract_markdown_links(text):
 
 def split_nodes_image(old_nodes):
     '''
-    we know how many matches are in text, we can find the match index points, we can get length of string by adding up lengths of list items, we then 
-    '''
+    Initial working code written without splits, rewrote new version with splits
     new_nodes = []
     for old_node in old_nodes:
         if old_node.text_type != TextType.TEXT:
@@ -71,6 +75,29 @@ def split_nodes_image(old_nodes):
                if new_node_text != "":
                     new_nodes.append(TextNode(new_node_text, TextType.TEXT))
     return new_nodes 
+    '''
+    new_nodes = []
+    for old_node in old_nodes:
+        if old_node.text_type != TextType.TEXT:
+            new_nodes.append(old_node)
+            continue
+        image_data_list = extract_markdown_images(old_node.text)
+        if not image_data_list:
+            new_nodes.append(old_node)
+            continue
+        remaining_text = old_node.text
+        for image in image_data_list:
+            split_text = remaining_text.split(f"![{image[0]}]({image[1]})", 1)
+            if len(split_text) != 2:
+                raise ValueError("invalid markdown, image section not closed")
+            if split_text[0] != "":
+                new_nodes.append(TextNode(split_text[0], TextType.TEXT))
+            new_nodes.append(TextNode(image[0], TextType.IMAGE, image[1]))
+            remaining_text = split_text[1]
+        if remaining_text != "":
+            new_nodes.append(TextNode(remaining_text, TextType.TEXT))
+    return new_nodes
+
 
 def split_nodes_link(old_nodes):
     '''
@@ -86,20 +113,33 @@ def split_nodes_link(old_nodes):
         if old_node.text_type != TextType.TEXT:
             new_nodes.append(old_node)
             continue
-        image_data_list = extract_markdown_links(old_node.text)
-        if not image_data_list:
+        link_data_list = extract_markdown_links(old_node.text)
+        if not link_data_list:
             new_nodes.append(old_node)
             continue
         remaining_text = old_node.text
-        for image in image_data_list:
-            split_text = remaining_text.split(f"[{image[0]}]({image[1]})")
+        for link in link_data_list:
+            split_text = remaining_text.split(f"[{link[0]}]({link[1]})", 1)
+            if len(split_text) != 2:
+                raise ValueError("invalid markdown, image section not closed")
             if split_text[0] != "":
                 new_nodes.append(TextNode(split_text[0], TextType.TEXT))
-            new_nodes.append(TextNode(image[0], TextType.LINK, image[1]))
-            if split_text[1] != "" and image == image_data_list[-1]:
-                new_nodes.append(TextNode(split_text[1], TextType.TEXT))
-            elif image != image_data_list[-1]:
-                remaining_text = split_text[1]
+            new_nodes.append(TextNode(link[0], TextType.LINK, link[1]))
+            remaining_text = split_text[1]
+        if remaining_text != "":
+            new_nodes.append(TextNode(remaining_text, TextType.TEXT))
     return new_nodes
             
+
+def text_to_textnodes(text):
+    if text == "":
+        return [TextNode(text, TextType.TEXT)]
+    delimiters = [("**", TextType.BOLD), ("_", TextType.ITALIC), ("`", TextType.CODE)]
+    initial_node = TextNode(text, TextType.TEXT)
+    current_nodes = [initial_node]
+    for delimiter in delimiters:
+        current_nodes = split_nodes_delimiter(current_nodes, delimiter[0], delimiter[1])
+    current_nodes = split_nodes_image(current_nodes)
+    current_nodes = split_nodes_link(current_nodes)
+    return current_nodes
 
