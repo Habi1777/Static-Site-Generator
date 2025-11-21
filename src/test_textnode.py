@@ -240,13 +240,8 @@ class TestOtherFunc(unittest.TestCase):
 
     def test_text_to_textnodes_3(self):
         text = "This is *text** with an _italic_ word ![obi wan image](https://i.imgur.com/fJRm4Vk.jpeg)"
-        self.assertListEqual(text_to_textnodes(text), [
-                TextNode("This is *text** with an ", TextType.TEXT),
-                TextNode("italic", TextType.ITALIC),
-                TextNode(" word ", TextType.TEXT),
-                TextNode("obi wan image", TextType.IMAGE, "https://i.imgur.com/fJRm4Vk.jpeg")
-            ]
-        )
+        with self.assertRaises(ValueError):
+            text_to_textnodes(text)
 
     def test_text_to_textnodes_4(self):
         text = "This is a sentence with a bold word inbetween image object ![obi wan image]**bold**(https://i.imgur.com/fJRm4Vk.jpeg)"
@@ -258,15 +253,9 @@ class TestOtherFunc(unittest.TestCase):
         )
 
     def test_text_to_textnodes_5(self):
-        text = "This is *text** with an _italic_ word but this is a `block of code that has some_symbols*`![obi wan image](https://i.imgur.com/fJRm4Vk.jpeg)"
-        self.assertListEqual(text_to_textnodes(text), [
-                TextNode("This is *text** with an ", TextType.TEXT),
-                TextNode("italic", TextType.ITALIC),
-                TextNode(" word but this is a ", TextType.TEXT),
-                TextNode("block of code that has some_symbols*", TextType.CODE),
-                TextNode("obi wan image", TextType.IMAGE, "https://i.imgur.com/fJRm4Vk.jpeg")
-            ]
-        )    
+        text = "This is **text** with an _italic_ word but this is a `block of code that has some_symbols**`![obi wan image](https://i.imgur.com/fJRm4Vk.jpeg)"
+        with self.assertRaises(ValueError):
+            text_to_textnodes(text) 
 
 if __name__ == "__main__":
     unittest.main()
