@@ -47,7 +47,7 @@ class ParentNode(HTMLNode):
     
     def to_html(self):
         if not self.tag:
-            raise ValueError("self.value for object is empty")
+            raise ValueError("self.tag for object is empty")
         if not self.children:
             raise ValueError("self.children for object is empty")
         inner_html_string = ""

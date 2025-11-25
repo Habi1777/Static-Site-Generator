@@ -1,7 +1,7 @@
 import unittest
 
-from textnode import TextNode, TextType, text_node_to_html_node
-from other_func import split_nodes_delimiter, extract_markdown_images, extract_markdown_links, split_nodes_image, split_nodes_link, text_to_textnodes
+from textnode import TextNode, TextType, BlockType, text_node_to_html_node
+from other_func import split_nodes_delimiter, extract_markdown_images, extract_markdown_links, split_nodes_image, split_nodes_link, text_to_textnodes, markdown_to_blocks, block_to_block_type, markdown_to_html_node
 
 class TestTextNode(unittest.TestCase):
     def test_eq_same_with_default_link(self):
@@ -256,6 +256,215 @@ class TestOtherFunc(unittest.TestCase):
         text = "This is **text** with an _italic_ word but this is a `block of code that has some_symbols**`![obi wan image](https://i.imgur.com/fJRm4Vk.jpeg)"
         with self.assertRaises(ValueError):
             text_to_textnodes(text) 
+
+    def test_markdown_to_blocks(self):
+        md = """
+This is **bolded** paragraph
+
+This is another paragraph with _italic_ text and `code` here
+This is the same paragraph on a new line
+
+- This is a list
+- with items
+"""
+        blocks = markdown_to_blocks(md)
+        self.assertEqual(
+            blocks,
+            [
+                "This is **bolded** paragraph",
+                "This is another paragraph with _italic_ text and `code` here\nThis is the same paragraph on a new line",
+                "- This is a list\n- with items",
+            ],
+        )
+
+    def test_markdown_to_blocks_1(self):
+        md = '''This is **bolded** paragraph
+
+This is another paragraph with _italic_ text and `code` here This is the same paragraph on a new line
+
+- This is a list
+- with items
+- and more items
+'''
+        blocks = markdown_to_blocks(md)
+        self.assertEqual(
+            blocks,
+            [
+                "This is **bolded** paragraph",
+                "This is another paragraph with _italic_ text and `code` here This is the same paragraph on a new line",
+                "- This is a list\n- with items\n- and more items",
+            ],
+        )
+
+    def test_block_to_block_type(self):
+        block = "# this is a heading block"
+        self.assertEqual(block_to_block_type(block), BlockType.HEADING)
+
+    def test_block_to_block_type_1(self):
+        block = "### this is a heading block"
+        self.assertEqual(block_to_block_type(block), BlockType.HEADING)
+
+    def test_block_to_block_type_2(self):
+        block = "###### this is a heading block"
+        self.assertEqual(block_to_block_type(block), BlockType.HEADING)
+
+    def test_block_to_block_type_3(self):
+        block = "``` this is a coding block ```"
+        self.assertEqual(block_to_block_type(block), BlockType.CODE)
+
+    def test_block_to_block_type_4(self):
+        block = "``` this is a coding block\n and even with a new line its still a code block ```"
+        self.assertEqual(block_to_block_type(block), BlockType.CODE)
+
+    def test_block_to_block_type_5(self):
+        block = "> this is a quote block\n> and even with a new line its still a quote block"
+        self.assertEqual(block_to_block_type(block), BlockType.QUOTE)
+
+    def test_block_to_block_type_6(self):
+        block = "> this is not a quote block\n because its missing the quote symbol on the next line"
+        self.assertEqual(block_to_block_type(block), BlockType.PARAGRAPH)
+
+    def test_block_to_block_type_7(self):
+        block = "> this is a quote block"
+        self.assertEqual(block_to_block_type(block), BlockType.QUOTE)
+
+    def test_block_to_block_type_8(self):
+        block = "- this is a unordered list block"
+        self.assertEqual(block_to_block_type(block), BlockType.UNORDERED_LIST)
+
+    def test_block_to_block_type_9(self):
+        block = "- this is an unordered list block\n- this is an unordered list block\n- this is an unordered list block\n- this is an unordered list block"
+        self.assertEqual(block_to_block_type(block), BlockType.UNORDERED_LIST)
+
+    def test_block_to_block_type_10(self):
+        block = "- this is not an unordered list block\n because this line is missing the dash\n- this is not an unordered list block"
+        self.assertEqual(block_to_block_type(block), BlockType.PARAGRAPH)
+
+    def test_block_to_block_type_11(self):
+        block = "1. this is an ordered list block"
+        self.assertEqual(block_to_block_type(block), BlockType.ORDERED_LIST)
+
+    def test_block_to_block_type_12(self):
+        block = "1. this is an ordered list block\n2. this is an ordered list block\n3. this is an ordered list block\n4. this is an ordered list block"
+        self.assertEqual(block_to_block_type(block), BlockType.ORDERED_LIST)
+
+    def test_block_to_block_type_13(self):
+        block = "1. this is not an ordered list block\n- this line is missing the number\n3. this is not anordered list block"
+        self.assertEqual(block_to_block_type(block), BlockType.PARAGRAPH)
+
+    def test_block_to_block_type_14(self):
+        block = "this is just a paragraph block"
+        self.assertEqual(block_to_block_type(block), BlockType.PARAGRAPH)
+
+    def test_block_to_block_type_15(self):
+        block = "this is just a paragraph block\n Still should be a paragraph block\neven now"
+        self.assertEqual(block_to_block_type(block), BlockType.PARAGRAPH)
+
+    def test_markdown_to_html_node(self):
+        md = """
+This is **bolded** paragraph
+text in a p
+tag here
+
+This is another paragraph with _italic_ text and `code` here
+
+"""
+
+        node = markdown_to_html_node(md)
+        html = node.to_html()
+        self.assertEqual(
+            html,
+            "<div><p>This is <b>bolded</b> paragraph text in a p tag here</p><p>This is another paragraph with <i>italic</i> text and <code>code</code> here</p></div>",
+        )
+
+    def test_markdown_to_html_node_2(self):
+        md = """
+```
+This is text that _should_ remain
+the **same** even with inline stuff
+```
+"""
+
+        node = markdown_to_html_node(md)
+        html = node.to_html()
+        self.assertEqual(
+            html,
+            "<div><pre><code>This is text that _should_ remain\nthe **same** even with inline stuff\n</code></pre></div>",
+        )
+
+    def test_markdown_to_html_node_3(self):
+        md = """
+> This is a quote
+> that spans multiple
+> lines
+"""
+
+        node = markdown_to_html_node(md)
+        html = node.to_html()
+        self.assertEqual(
+            html,
+            "<div><blockquote>This is a quote that spans multiple lines</blockquote></div>",
+        )
+
+    def test_markdown_to_html_node_4(self):
+        md = """
+- Item one
+- Item two
+- Item three
+"""
+
+        node = markdown_to_html_node(md)
+        html = node.to_html()
+        self.assertEqual(
+            html,
+            "<div><ul><li>Item one</li><li>Item two</li><li>Item three</li></ul></div>",
+        )
+
+    def test_markdown_to_html_node_5(self):
+        md = """
+1. First item
+2. Second item
+3. Third item
+"""
+
+        node = markdown_to_html_node(md)
+        html = node.to_html()
+        self.assertEqual(
+            html,
+            "<div><ol><li>First item</li><li>Second item</li><li>Third item</li></ol></div>",
+        )
+
+    def test_markdown_to_html_node_6(self):
+        md = """
+# Heading 1
+"""
+
+        node = markdown_to_html_node(md)
+        html = node.to_html()
+        self.assertEqual(
+            html,
+            "<div><h1>Heading 1</h1></div>",
+        )
+
+    def test_markdown_to_html_node_7(self):
+        md = """
+# Heading 1
+
+This is another paragraph with _italic_ text and `code` here
+
+## Heading 2
+
+- Item one
+- Item two
+- Item three
+"""
+
+        node = markdown_to_html_node(md)
+        html = node.to_html()
+        self.assertEqual(
+            html,
+            "<div><h1>Heading 1</h1><p>This is another paragraph with <i>italic</i> text and <code>code</code> here</p><h2>Heading 2</h2><ul><li>Item one</li><li>Item two</li><li>Item three</li></ul></div>",
+        )
 
 if __name__ == "__main__":
     unittest.main()

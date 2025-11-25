@@ -29,6 +29,13 @@ class TextNode:
     def __repr__(self):
         return f"TextNode({self.text}, {self.text_type.value}, {self.url})"
     
+class BlockType(Enum):
+    PARAGRAPH = "p"
+    HEADING = "h"
+    CODE = ("pre", "code")
+    QUOTE = "blockquote"
+    UNORDERED_LIST = ("ul", "li")
+    ORDERED_LIST = ("ol", "li")
 
 def text_node_to_html_node(text_node):
     if text_node.text_type not in TextType:

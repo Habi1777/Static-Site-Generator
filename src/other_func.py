@@ -1,4 +1,5 @@
-from textnode import TextNode, TextType
+from textnode import TextNode, TextType, BlockType, text_node_to_html_node
+from htmlnode import ParentNode, LeafNode
 import re
 
 
@@ -165,3 +166,103 @@ def text_to_textnodes(text):
     current_nodes = split_nodes_link(current_nodes)
     return current_nodes
 
+
+def markdown_to_blocks(markdown):
+    blocks = []
+    split_text = markdown.split("\n\n")
+    for text in split_text:
+        text = text.strip()
+        if text != "":
+            blocks.append(text)
+    return blocks
+
+def block_to_block_type(block):
+        if block.startswith(("###### ", "##### ", "#### ", "### ", "## ", "# ")):
+            return BlockType.HEADING
+        if block.startswith("```") and block.endswith("```"):
+            return BlockType.CODE
+        if block.startswith("> "):
+            split_text = block.splitlines()
+            for line in split_text:
+                if not line.startswith("> "):
+                    return BlockType.PARAGRAPH
+            return BlockType.QUOTE
+        if block.startswith("- "):
+            split_text = block.splitlines()
+            for line in split_text:
+                if not line.startswith("- "):
+                    return BlockType.PARAGRAPH
+            return BlockType.UNORDERED_LIST
+        if block[0].isdigit() and block[1:3] == ". ":
+            split_text = block.splitlines()
+            for line in split_text:
+                if not line[0].isdigit() or not line[1:3] == ". ":
+                    return BlockType.PARAGRAPH
+            return BlockType.ORDERED_LIST
+        return BlockType.PARAGRAPH
+
+def markdown_to_html_node(markdown):
+    main_parent_nodes = []
+    list_of_blocks = markdown_to_blocks(markdown)
+    for block in list_of_blocks:
+        block_type = block_to_block_type(block)
+        if block_type == BlockType.HEADING:
+            hash_count = 0
+            for char in block:
+                if char == "#":
+                    hash_count += 1
+                else:
+                    break
+            block_parent_node = ParentNode(f"{block_type.value}{hash_count}", [])
+            block_text = block[hash_count+1:]
+            block_text_nodes = text_to_textnodes(block_text)
+            for text_node in block_text_nodes:
+                block_parent_node.children.append(text_node_to_html_node(text_node))
+            main_parent_nodes.append(block_parent_node)
+        if block_type == BlockType.CODE:
+            block_text = block[3:-3].lstrip()
+            block_text_node = TextNode(block_text, TextType.TEXT)
+            block_parent_node = ParentNode(f"{block_type.value[1]}", [text_node_to_html_node(block_text_node)])
+            block_grandparent_node = ParentNode(f"{block_type.value[0]}", [block_parent_node])
+            main_parent_nodes.append(block_grandparent_node)
+        if block_type == BlockType.QUOTE or block_type == BlockType.PARAGRAPH:
+            block_parent_node = ParentNode(f"{block_type.value}", [])
+            block_text = " ".join([text[2:] for text in block.splitlines()]) if block_type == BlockType.QUOTE else " ".join(text for text in block.splitlines())
+            block_text_nodes = text_to_textnodes(block_text)
+            for text_node in block_text_nodes:
+                block_parent_node.children.append(text_node_to_html_node(text_node))
+            main_parent_nodes.append(block_parent_node)
+            '''
+            combined quote and paragraph sections with inline if statement at line 230 due to code similarity
+        if block_type == BlockType.PARAGRAPH:
+            block_parent_node = ParentNode(f"{block_type.value}", [])
+            block_text = block.replace("\n"," ")
+            block_text_nodes = text_to_textnodes(block_text)
+            for text_node in block_text_nodes:
+                block_parent_node.children.append(text_node_to_html_node(text_node))
+            main_parent_nodes.append(block_parent_node)
+            '''
+        if block_type == BlockType.UNORDERED_LIST or block_type == BlockType.ORDERED_LIST:
+            block_grandparent_node = ParentNode(f"{block_type.value[0]}", [])
+            for line in block.splitlines():
+                line_parent_node = ParentNode(f"{block_type.value[1]}",[])
+                line_text = line[2:] if block_type == BlockType.UNORDERED_LIST else line[3:]
+                line_text_nodes = text_to_textnodes(line_text)
+                for text_node in line_text_nodes:
+                    line_parent_node.children.append(text_node_to_html_node(text_node))
+                block_grandparent_node.children.append(line_parent_node)
+            main_parent_nodes.append(block_grandparent_node)
+            '''
+            combined unoredered list and ordered list as only one part differed that could be handled with an inline if statement on line 246
+        if block_type == BlockType.ORDERED_LIST:
+            block_grandparent_node = ParentNode(f"{block_type.value[0]}", [])
+            for line in block.splitlines():
+                line_parent_node = ParentNode(f"{block_type.value[1]}",[])
+                line_text = line[3:]
+                line_text_nodes = text_to_textnodes(line_text)
+                for text_node in line_text_nodes:
+                    line_parent_node.children.append(text_node_to_html_node(text_node))
+                block_grandparent_node.children.append(line_parent_node)
+            main_parent_nodes.append(block_grandparent_node)
+            '''
+    return ParentNode("div", main_parent_nodes)
