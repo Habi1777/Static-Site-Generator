@@ -1,7 +1,7 @@
 import unittest
 
 from textnode import TextNode, TextType, BlockType, text_node_to_html_node
-from other_func import split_nodes_delimiter, extract_markdown_images, extract_markdown_links, split_nodes_image, split_nodes_link, text_to_textnodes, markdown_to_blocks, block_to_block_type, markdown_to_html_node
+from other_func import split_nodes_delimiter, extract_markdown_images, extract_markdown_links, split_nodes_image, split_nodes_link, text_to_textnodes, markdown_to_blocks, block_to_block_type, markdown_to_html_node, extract_title
 
 class TestTextNode(unittest.TestCase):
     def test_eq_same_with_default_link(self):
@@ -406,6 +406,20 @@ the **same** even with inline stuff
             "<div><blockquote>This is a quote that spans multiple lines</blockquote></div>",
         )
 
+    def test_markdown_to_html_node_3_and_half(self):
+        md = """
+> "I am in fact a Hobbit in all but size."
+>
+> -- J.R.R. Tolkien
+"""
+
+        node = markdown_to_html_node(md)
+        html = node.to_html()
+        self.assertEqual(
+            html,
+            "<div><blockquote>\"I am in fact a Hobbit in all but size.\"  -- J.R.R. Tolkien</blockquote></div>",
+        )
+
     def test_markdown_to_html_node_4(self):
         md = """
 - Item one
@@ -464,6 +478,24 @@ This is another paragraph with _italic_ text and `code` here
         self.assertEqual(
             html,
             "<div><h1>Heading 1</h1><p>This is another paragraph with <i>italic</i> text and <code>code</code> here</p><h2>Heading 2</h2><ul><li>Item one</li><li>Item two</li><li>Item three</li></ul></div>",
+        )
+
+    def test_extract_title(self):
+        md = "# Hello"
+        self.assertEqual(
+            extract_title(md), "Hello"
+        )
+
+    def test_extract_title_2(self):
+        md = "# Tolkien Fan Club"
+        self.assertEqual(
+            extract_title(md), "Tolkien Fan Club"
+        )
+
+    def test_extract_title_2(self):
+        md = "#      Tolkien Fan Club     "
+        self.assertEqual(
+            extract_title(md), "Tolkien Fan Club"
         )
 
 if __name__ == "__main__":

@@ -1,6 +1,8 @@
 from textnode import TextNode, TextType, BlockType, text_node_to_html_node
 from htmlnode import ParentNode, LeafNode
 import re
+import os
+import shutil
 
 
 def split_nodes_delimiter(old_nodes, delimiter, text_type):
@@ -181,10 +183,10 @@ def block_to_block_type(block):
             return BlockType.HEADING
         if block.startswith("```") and block.endswith("```"):
             return BlockType.CODE
-        if block.startswith("> "):
+        if block.startswith(">"):
             split_text = block.splitlines()
             for line in split_text:
-                if not line.startswith("> "):
+                if not line.startswith(">"):
                     return BlockType.PARAGRAPH
             return BlockType.QUOTE
         if block.startswith("- "):
@@ -227,7 +229,7 @@ def markdown_to_html_node(markdown):
             main_parent_nodes.append(block_grandparent_node)
         if block_type == BlockType.QUOTE or block_type == BlockType.PARAGRAPH:
             block_parent_node = ParentNode(f"{block_type.value}", [])
-            block_text = " ".join([text[2:] for text in block.splitlines()]) if block_type == BlockType.QUOTE else " ".join(text for text in block.splitlines())
+            block_text = " ".join([text[1:].strip() for text in block.splitlines()]) if block_type == BlockType.QUOTE else " ".join(text for text in block.splitlines())
             block_text_nodes = text_to_textnodes(block_text)
             for text_node in block_text_nodes:
                 block_parent_node.children.append(text_node_to_html_node(text_node))
@@ -266,3 +268,78 @@ def markdown_to_html_node(markdown):
             main_parent_nodes.append(block_grandparent_node)
             '''
     return ParentNode("div", main_parent_nodes)
+
+def clear_and_paste_public_dir():
+    #print(f"checking if initial paths for public and static exists")
+    if os.path.exists("./public") and os.path.isdir("./public"):
+        shutil.rmtree("./public")
+    if not os.path.exists("./static") or not os.path.isdir("./static"):
+        raise NotADirectoryError("static folder not found")
+    os.mkdir("public")
+    #print(f"created new public folder")
+    copy_dirs_and_files_to_paste("./static", "./public")
+
+
+
+def copy_dirs_and_files_to_paste(current_source_path, current_receiver_path):
+    current_directory = os.listdir(current_source_path)
+    #print(f"labeled current_directory and made list {current_directory} and assigned my paths {current_source_path} & {current_receiver_path}")
+    for key in current_directory:
+        new_current_source_path = os.path.join(current_source_path, f"{key}")
+        new_current_receiver_path = os.path.join(current_receiver_path, f"{key}")
+        #print(f"labeled new paths for copying {new_current_source_path} & {new_current_receiver_path}")       
+        if os.path.isfile(new_current_source_path):
+            #print(f"attempting to copy {new_current_source_path} to {new_current_receiver_path}")
+            shutil.copy(new_current_source_path, new_current_receiver_path)
+            #print(f"copy {new_current_receiver_path} completed")
+        if os.path.isdir(new_current_source_path):
+            #print(f"attempting to create new folder {new_current_receiver_path}")
+            os.mkdir(new_current_receiver_path)
+            #print(f"copy made going into {new_current_source_path}")
+            copy_dirs_and_files_to_paste(new_current_source_path, new_current_receiver_path)
+    #print("all copies completed")
+    return
+
+def extract_title(markdown):
+    blocks = markdown_to_blocks(markdown)
+    if not blocks[0].startswith("# "):
+        raise Exception("No header on Markdown Page")
+    return blocks[0][2:].strip()
+
+def generate_page(from_path, template_path, dest_path):
+    print(f"Generating page from {from_path} to {dest_path} using {template_path}")
+    if not os.path.exists(from_path):
+        raise Exception(f"{from_path} path does not exist")
+    if not os.path.exists(template_path):
+        raise Exception(f"{template_path} path does not exist")
+    with open(from_path) as md_file, open(template_path) as template_file:
+        md_file_content = md_file.read()
+        template_file_content = template_file.read()
+        html_node = markdown_to_html_node(md_file_content)
+        #print(html_node)
+        html_version_of_md = html_node.to_html()
+        title_of_md = extract_title(md_file_content)
+        template_file_content = template_file_content.replace("{{ Content }}", html_version_of_md, 1)
+        template_file_content = template_file_content.replace("{{ Title }}", title_of_md, 1)
+        dest_dir = os.path.dirname(dest_path)
+        if not os.path.exists(dest_dir):
+            os.makedirs(dest_dir)
+        with open(dest_path, "w") as html_file:
+            html_file.write(template_file_content)
+    return
+
+def generate_pages_recursive(dir_path_content, template_path, dest_dir_path):
+    current_directory = os.listdir(dir_path_content)
+    for key in current_directory:
+        current_source_path = os.path.join(dir_path_content, f"{key}")
+        #current_destination_path = os.path.join(dest_dir_path, f"{key}")
+        if os.path.isfile(current_source_path):
+            if not isinstance(key, str) or not key.endswith(".md"):
+                raise Exception(f"{key} in the content directory was not recognize as an md file or name did not convert properly into a string")
+            html_ver_key = key.replace(".md",".html")
+            current_destination_path = os.path.join(dest_dir_path, f"{html_ver_key}")
+            generate_page(current_source_path, template_path, current_destination_path)
+        if os.path.isdir(current_source_path):
+            current_destination_path = os.path.join(dest_dir_path, f"{key}")
+            generate_pages_recursive(current_source_path, template_path, current_destination_path)
+    return

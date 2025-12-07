@@ -28,8 +28,8 @@ class LeafNode(HTMLNode):
         super().__init__(tag, value, None, props)
 
     def to_html(self):
-        if not self.value:
-            raise ValueError("self.value for object is empty")
+        if not self.value and self.tag != "img":
+            raise ValueError(f"{self.tag}, {self.value}, {self.props} self.value for object is empty")
         if not self.tag:
             return f"{self.value}"
         if not self.props:
