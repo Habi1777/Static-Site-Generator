@@ -269,15 +269,17 @@ def markdown_to_html_node(markdown):
             '''
     return ParentNode("div", main_parent_nodes)
 
-def clear_and_paste_public_dir():
+def clear_and_paste_public_dir(project_root):
     #print(f"checking if initial paths for public and static exists")
-    if os.path.exists("./public") and os.path.isdir("./public"):
-        shutil.rmtree("./public")
-    if not os.path.exists("./static") or not os.path.isdir("./static"):
+    destination_folder = os.path.join(project_root, "docs")
+    original_folder = os.path.join(project_root, "static")
+    if os.path.exists(destination_folder) and os.path.isdir(destination_folder):
+        shutil.rmtree(destination_folder)
+    if not os.path.exists(original_folder) or not os.path.isdir(original_folder):
         raise NotADirectoryError("static folder not found")
-    os.mkdir("public")
+    os.mkdir(destination_folder)
     #print(f"created new public folder")
-    copy_dirs_and_files_to_paste("./static", "./public")
+    copy_dirs_and_files_to_paste(original_folder, destination_folder)
 
 
 
@@ -306,7 +308,7 @@ def extract_title(markdown):
         raise Exception("No header on Markdown Page")
     return blocks[0][2:].strip()
 
-def generate_page(from_path, template_path, dest_path):
+def generate_page(from_path, template_path, dest_path, basepath):
     print(f"Generating page from {from_path} to {dest_path} using {template_path}")
     if not os.path.exists(from_path):
         raise Exception(f"{from_path} path does not exist")
@@ -321,6 +323,9 @@ def generate_page(from_path, template_path, dest_path):
         title_of_md = extract_title(md_file_content)
         template_file_content = template_file_content.replace("{{ Content }}", html_version_of_md, 1)
         template_file_content = template_file_content.replace("{{ Title }}", title_of_md, 1)
+        template_file_content = template_file_content.replace('href="/', f'href="{basepath}')
+        template_file_content = template_file_content.replace('src="/', f'src="{basepath}')
+        #added the last 2 replace functions to modify the src and href pointers to the github site hosting service
         dest_dir = os.path.dirname(dest_path)
         if not os.path.exists(dest_dir):
             os.makedirs(dest_dir)
@@ -328,7 +333,7 @@ def generate_page(from_path, template_path, dest_path):
             html_file.write(template_file_content)
     return
 
-def generate_pages_recursive(dir_path_content, template_path, dest_dir_path):
+def generate_pages_recursive(dir_path_content, template_path, dest_dir_path, basepath):
     current_directory = os.listdir(dir_path_content)
     for key in current_directory:
         current_source_path = os.path.join(dir_path_content, f"{key}")
@@ -338,8 +343,8 @@ def generate_pages_recursive(dir_path_content, template_path, dest_dir_path):
                 raise Exception(f"{key} in the content directory was not recognize as an md file or name did not convert properly into a string")
             html_ver_key = key.replace(".md",".html")
             current_destination_path = os.path.join(dest_dir_path, f"{html_ver_key}")
-            generate_page(current_source_path, template_path, current_destination_path)
+            generate_page(current_source_path, template_path, current_destination_path, basepath)
         if os.path.isdir(current_source_path):
             current_destination_path = os.path.join(dest_dir_path, f"{key}")
-            generate_pages_recursive(current_source_path, template_path, current_destination_path)
+            generate_pages_recursive(current_source_path, template_path, current_destination_path, basepath)
     return
